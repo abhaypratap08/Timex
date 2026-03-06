@@ -51,7 +51,11 @@ public class Timex extends JFrame {
     private JLabel clockTime, clockDay, clockDate;
     private Timer  clockTimer;
 
-    private JLabel    pomoTime;
+    // Updated Pomodoro Timer Components
+    private JPanel     pomoTimeContainer;
+    private JTextField hhField, mmField, ssField;
+    private JLabel     colon1, colon2;
+    
     private TimexBtn  startBtn;
     private PillBtn[] modePills;
 
@@ -68,7 +72,11 @@ public class Timex extends JFrame {
     public Timex() {
         setUndecorated(true);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        
         setType(Window.Type.UTILITY);
+        setResizable(false);
+        setAlwaysOnTop(true);
+
         setSize(350, 220);
         setMinimumSize(new Dimension(280, 180));
         setBackground(new Color(44, 50, 60));
@@ -77,7 +85,6 @@ public class Timex extends JFrame {
         setupWindowInteractions();
 
         setLocationRelativeTo(null);
-        setAlwaysOnTop(true);
         setVisible(true);
 
         clockTimer = new Timer(1000, e -> refreshClock());
@@ -97,6 +104,10 @@ public class Timex extends JFrame {
             }
         };
         root.setOpaque(true);
+        root.setFocusable(true);
+        root.addMouseListener(new MouseAdapter() {
+            @Override public void mousePressed(MouseEvent e) { root.requestFocusInWindow(); }
+        });
 
         tabClock = new TabBtn("CLOCK", true);
         tabClock.addActionListener(e -> showTab(TAB_CLOCK));
@@ -111,7 +122,7 @@ public class Timex extends JFrame {
         closeBtn.addActionListener(e -> System.exit(0));
         root.add(closeBtn);
 
-        // clock panel
+        // clock panel ---->>> OG idea
         clockPanel = new JPanel(null);
         clockPanel.setOpaque(false);
 
@@ -129,7 +140,7 @@ public class Timex extends JFrame {
 
         root.add(clockPanel);
 
-        // pomodoro panel
+        // pomodoro panel  ----->>> NEW ADDITION lololzzz
         pomoPanel = new JPanel(null);
         pomoPanel.setOpaque(false);
 
@@ -141,9 +152,26 @@ public class Timex extends JFrame {
             pomoPanel.add(modePills[i]);
         }
 
-        pomoTime = transparentLabel(fmtPomo(secsLeft), SwingConstants.CENTER);
-        pomoTime.setForeground(C_TIMER);
-        pomoPanel.add(pomoTime);
+        // --- NEW EDITABLE TIME PANEL --- >>>>
+        pomoTimeContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        pomoTimeContainer.setOpaque(false);
+
+        hhField = createTimeField();
+        colon1  = transparentLabel(":", SwingConstants.CENTER);
+        colon1.setForeground(C_TIMER);
+        mmField = createTimeField();
+        colon2  = transparentLabel(":", SwingConstants.CENTER);
+        colon2.setForeground(C_TIMER);
+        ssField = createTimeField();
+
+        pomoTimeContainer.add(hhField);
+        pomoTimeContainer.add(colon1);
+        pomoTimeContainer.add(mmField);
+        pomoTimeContainer.add(colon2);
+        pomoTimeContainer.add(ssField);
+        pomoPanel.add(pomoTimeContainer);
+        updateTimeFields();
+        // -------------------------------
 
         TimexBtn minusBtn = new TimexBtn("− 1 min", C_ADJ_BG, C_ADJ_BD, C_ADJ_FG, false);
         minusBtn.addActionListener(e -> adjustPomo(-60));
@@ -172,6 +200,73 @@ public class Timex extends JFrame {
 
         showTab(TAB_CLOCK);
         setContentPane(root);
+    }
+
+    private JTextField createTimeField() {
+        JTextField tf = new JTextField(2) {
+            @Override public Dimension getPreferredSize() {
+                FontMetrics fm = getFontMetrics(getFont());
+                return new Dimension(fm.stringWidth("00") + 4, fm.getHeight());
+            }
+        };
+        tf.setOpaque(false);
+        tf.setBorder(null);
+        tf.setForeground(C_TIMER);
+        tf.setCaretColor(C_TIMER);
+        tf.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        tf.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) {
+                if (!running) SwingUtilities.invokeLater(tf::selectAll);
+            }
+            @Override public void focusLost(FocusEvent e) {
+                syncSecsFromFields();
+            }
+        });
+        
+        tf.addActionListener(e -> root.requestFocusInWindow()); 
+        
+        tf.addKeyListener(new KeyAdapter() {
+            public void keyTyped(KeyEvent e) {
+                if(running || !Character.isDigit(e.getKeyChar())) {
+                    e.consume();
+                    return;
+                }
+                if(tf.getText().length() >= 2 && tf.getSelectedText() == null) {
+                    e.consume(); 
+                }
+            }
+        });
+        return tf;
+    }
+
+    private void updateTimeFields() {
+        long s = secsLeft;
+        hhField.setText(String.format("%02d", s / 3600));
+        mmField.setText(String.format("%02d", (s % 3600) / 60));
+        ssField.setText(String.format("%02d", s % 60));
+    }
+
+    private void syncSecsFromFields() {
+        try {
+            int h = Integer.parseInt(hhField.getText().trim().isEmpty() ? "0" : hhField.getText().trim());
+            int m = Integer.parseInt(mmField.getText().trim().isEmpty() ? "0" : mmField.getText().trim());
+            int s = Integer.parseInt(ssField.getText().trim().isEmpty() ? "0" : ssField.getText().trim());
+            secsLeft = h * 3600L + m * 60L + s;
+            modeSecs[activeMode] = (int) secsLeft;
+        } catch (Exception ex) {
+            
+        }
+        updateTimeFields(); 
+    }
+
+    private void setFieldsEditable(boolean editable) {
+        hhField.setEditable(editable);
+        mmField.setEditable(editable);
+        ssField.setEditable(editable);
+        hhField.setFocusable(editable);
+        mmField.setFocusable(editable);
+        ssField.setFocusable(editable);
     }
 
     private void relayout() {
@@ -233,10 +328,17 @@ public class Timex extends JFrame {
         }
 
         int timerFsz = Math.max(22, (int)(H * 0.28));
-        pomoTime.setFont(new Font("Helvetica Neue", Font.BOLD, timerFsz));
+        Font timerFont = new Font("Helvetica Neue", Font.BOLD, timerFsz);
+        hhField.setFont(timerFont);
+        mmField.setFont(timerFont);
+        ssField.setFont(timerFont);
+        colon1.setFont(timerFont);
+        colon2.setFont(timerFont);
+        
         int timerH = timerFsz + 10;
         int timerY = pillY + pillH + (int)(H * 0.05);
-        pomoTime.setBounds(0, timerY, W, timerH);
+        pomoTimeContainer.setBounds(0, timerY, W, timerH);
+        pomoTimeContainer.revalidate();
 
         int adjH    = Math.max(22, (int)(H * 0.09));
         int adjW    = Math.max(64, (int)(W * 0.13));
@@ -291,7 +393,8 @@ public class Timex extends JFrame {
         if (running) { countdown.stop(); running = false; }
         activeMode = idx;
         secsLeft   = modeSecs[idx];
-        pomoTime.setText(fmtPomo(secsLeft));
+        setFieldsEditable(true);
+        updateTimeFields();
         startBtn.setText("start");
         for (int i = 0; i < modePills.length; i++) modePills[i].setActive(i == idx);
     }
@@ -300,22 +403,26 @@ public class Timex extends JFrame {
         if (running) return;
         secsLeft = Math.max(0, secsLeft + delta);
         modeSecs[activeMode] = (int) secsLeft;
-        pomoTime.setText(fmtPomo(secsLeft));
+        updateTimeFields();
     }
 
     private void toggleTimer() {
         if (running) {
             countdown.stop();
             startBtn.setText("start");
+            setFieldsEditable(true);
         } else {
+            setFieldsEditable(false);
+            root.requestFocusInWindow(); 
             countdown = new Timer(1000, e -> {
                 if (secsLeft > 0) {
                     secsLeft--;
-                    pomoTime.setText(fmtPomo(secsLeft));
+                    updateTimeFields();
                 } else {
                     countdown.stop();
                     running = false;
                     startBtn.setText("start");
+                    setFieldsEditable(true);
                     Toolkit.getDefaultToolkit().beep();
                     JOptionPane.showMessageDialog(Timex.this,
                             "Session complete!", "Timex", JOptionPane.INFORMATION_MESSAGE);
@@ -332,12 +439,9 @@ public class Timex extends JFrame {
         if (countdown != null) countdown.stop();
         running  = false;
         secsLeft = modeSecs[activeMode];
-        pomoTime.setText(fmtPomo(secsLeft));
+        setFieldsEditable(true);
+        updateTimeFields();
         startBtn.setText("start");
-    }
-
-    private static String fmtPomo(long s) {
-        return String.format("%02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60);
     }
 
     class TimexBtn extends JButton {
