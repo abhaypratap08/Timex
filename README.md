@@ -7,7 +7,7 @@ no thoughts given on the cosmetics... so, just chillout~~!!!!
 made two flavors of this thing. pick your poison:
 
 * `ANALOG_TIMEX/` -> the classic one with the hands going round and round.
-* `DIGITAL_TIMEX/` -> the digital numbers one (comes with a pomodoro timer if you actually want to be productive).
+* `DIGITAL_TIMEX/` -> the digital numbers one (comes with a pomodoro timer if you actually want to be productive LOL~~).
 
 inside each of those:
 * `src/` -> the raw `.java` files. go here to judge my Swing skills or compile it yourself.
