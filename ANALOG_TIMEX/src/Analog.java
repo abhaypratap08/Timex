@@ -410,5 +410,6 @@ public class Analog extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new Analog());
+        System.setProperty("sun.java2d.opengl", "true");
     }
 }
