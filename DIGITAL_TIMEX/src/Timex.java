@@ -622,5 +622,6 @@ public class Timex extends JFrame {
         System.setProperty("awt.useSystemAAFontSettings", "lcd");
         System.setProperty("swing.aatext",                "true");
         SwingUtilities.invokeLater(Timex::new);
+        System.setProperty("sun.java2d.opengl", "true");
     }
 }
