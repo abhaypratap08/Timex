@@ -9,11 +9,10 @@ import javax.swing.plaf.basic.BasicButtonUI;
 
 public class Analog extends JFrame {
 
-    // Same color palette from Timex.java
     private static final Color C_TIMER     = Color.WHITE;
     private static final Color C_SUB       = new Color(185, 195, 210);
     private static final Color C_DIM       = new Color(130, 145, 165);
-    private static final Color C_SEC_HAND  = new Color(235, 87, 87); // Soft red for dark mode
+    private static final Color C_SEC_HAND  = new Color(235, 87, 87); 
 
     private static final Color C_ICO_BG    = new Color(255, 255, 255,  30);
     private static final Color C_ICO_BD    = new Color(255, 255, 255,  80);
@@ -102,18 +101,15 @@ public class Analog extends JFrame {
         closeBtn.setFont(new Font("Dialog", Font.PLAIN, Math.max(10, cbSz / 3)));
         closeBtn.setBounds(W - cbSz - 12, 12, cbSz, cbSz);
 
-        // Calculate space for labels
         int dayFsz = Math.max(16, (int)(H * 0.06));
         int dateFsz = Math.max(12, (int)(H * 0.045));
         int textH = dayFsz + dateFsz + 20;
-
-        // Make the analog clock perfectly square and centered
+        
         int faceSz = Math.min(W - 40, H - textH - 30);
         int faceX = (W - faceSz) / 2;
         int faceY = 20;
         analogFace.setBounds(faceX, faceY, faceSz, faceSz);
 
-        // Labels at the bottom
         int textStartY = faceY + faceSz + 10;
         clockDay.setFont(new Font("Helvetica Neue", Font.BOLD, dayFsz));
         clockDay.setBounds(0, textStartY, W, dayFsz + 4);
@@ -165,7 +161,6 @@ public class Analog extends JFrame {
             double minutes = now.getMinute() + seconds / 60.0;
             double hours = (now.getHour() % 12) + minutes / 60.0;
 
-            // Draw Hands (dynamically scaled)
             int hrThick = Math.max(3, radius / 15);
             int minThick = Math.max(2, radius / 25);
             
