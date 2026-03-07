@@ -105,6 +105,7 @@ public class Timex extends JFrame {
         };
         root.setOpaque(true);
         root.setFocusable(true);
+        // Clicking the background drops focus from the text fields
         root.addMouseListener(new MouseAdapter() {
             @Override public void mousePressed(MouseEvent e) { root.requestFocusInWindow(); }
         });
@@ -122,7 +123,7 @@ public class Timex extends JFrame {
         closeBtn.addActionListener(e -> System.exit(0));
         root.add(closeBtn);
 
-        // clock panel ---->>> OG idea
+        // clock panel
         clockPanel = new JPanel(null);
         clockPanel.setOpaque(false);
 
@@ -140,7 +141,7 @@ public class Timex extends JFrame {
 
         root.add(clockPanel);
 
-        // pomodoro panel  ----->>> NEW ADDITION lololzzz
+        // pomodoro panel
         pomoPanel = new JPanel(null);
         pomoPanel.setOpaque(false);
 
@@ -152,7 +153,7 @@ public class Timex extends JFrame {
             pomoPanel.add(modePills[i]);
         }
 
-        // --- NEW EDITABLE TIME PANEL --- >>>>
+        // --- NEW EDITABLE TIME PANEL ---
         pomoTimeContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         pomoTimeContainer.setOpaque(false);
 
@@ -202,6 +203,7 @@ public class Timex extends JFrame {
         setContentPane(root);
     }
 
+    // Creates an invisible text field that looks like a label
     private JTextField createTimeField() {
         JTextField tf = new JTextField(2) {
             @Override public Dimension getPreferredSize() {
@@ -224,16 +226,16 @@ public class Timex extends JFrame {
             }
         });
         
-        tf.addActionListener(e -> root.requestFocusInWindow()); 
+        tf.addActionListener(e -> root.requestFocusInWindow()); // Enter key drops focus
         
         tf.addKeyListener(new KeyAdapter() {
             public void keyTyped(KeyEvent e) {
                 if(running || !Character.isDigit(e.getKeyChar())) {
-                    e.consume();
+                    e.consume(); // Prevent non-numbers
                     return;
                 }
                 if(tf.getText().length() >= 2 && tf.getSelectedText() == null) {
-                    e.consume(); 
+                    e.consume(); // Limit to 2 digits unless overwriting selected text
                 }
             }
         });
@@ -255,9 +257,9 @@ public class Timex extends JFrame {
             secsLeft = h * 3600L + m * 60L + s;
             modeSecs[activeMode] = (int) secsLeft;
         } catch (Exception ex) {
-            
+            // Revert silently on parse error
         }
-        updateTimeFields(); 
+        updateTimeFields(); // Reformats the display perfectly (e.g. "90" mins -> 1hr 30m)
     }
 
     private void setFieldsEditable(boolean editable) {
@@ -338,7 +340,7 @@ public class Timex extends JFrame {
         int timerH = timerFsz + 10;
         int timerY = pillY + pillH + (int)(H * 0.05);
         pomoTimeContainer.setBounds(0, timerY, W, timerH);
-        pomoTimeContainer.revalidate();
+        pomoTimeContainer.revalidate(); // Ensures FlowLayout respects new font sizes
 
         int adjH    = Math.max(22, (int)(H * 0.09));
         int adjW    = Math.max(64, (int)(W * 0.13));
@@ -413,7 +415,7 @@ public class Timex extends JFrame {
             setFieldsEditable(true);
         } else {
             setFieldsEditable(false);
-            root.requestFocusInWindow(); 
+            root.requestFocusInWindow(); // drop any active typing focus
             countdown = new Timer(1000, e -> {
                 if (secsLeft > 0) {
                     secsLeft--;
