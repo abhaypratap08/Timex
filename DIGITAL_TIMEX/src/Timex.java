@@ -6,7 +6,8 @@ import java.time.format.DateTimeFormatter;
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicButtonUI;
 
-public class Timex extends JFrame {
+// 1. CHANGED: Now extends JDialog instead of JFrame
+public class Timex extends JDialog { 
 
     private static final Color C_TIMER     = Color.WHITE;
     private static final Color C_SUB       = new Color(185, 195, 210);
@@ -71,10 +72,20 @@ public class Timex extends JFrame {
 
     public Timex() {
         setUndecorated(true);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        // 2. CHANGED: JDialog uses DISPOSE_ON_CLOSE instead of EXIT_ON_CLOSE
+        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE); 
+        
+        // Ensure JVM completely stops when this dialog is disposed
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                System.exit(0);
+            }
+        });
         
         setType(Window.Type.UTILITY);
-        setResizable(false);
+        // Keep resizable true so your custom resize logic is permitted by the OS
+        setResizable(true); 
         setAlwaysOnTop(true);
 
         setSize(350, 220);
@@ -583,6 +594,7 @@ public class Timex extends JFrame {
                 if (pressPoint == null) return;
                 Point cur = e.getLocationOnScreen();
                 int dx = cur.x - pressPoint.x, dy = cur.y - pressPoint.y;
+                
                 if (resizeDir == -1) {
                     setLocation(pressWinBounds.x + dx, pressWinBounds.y + dy);
                 } else {
@@ -591,8 +603,24 @@ public class Timex extends JFrame {
                     if (resizeDir == Cursor.S_RESIZE_CURSOR  || resizeDir == Cursor.SW_RESIZE_CURSOR || resizeDir == Cursor.SE_RESIZE_CURSOR) r.height += dy;
                     if (resizeDir == Cursor.W_RESIZE_CURSOR  || resizeDir == Cursor.NW_RESIZE_CURSOR || resizeDir == Cursor.SW_RESIZE_CURSOR) { r.width -= dx; r.x += dx; }
                     if (resizeDir == Cursor.N_RESIZE_CURSOR  || resizeDir == Cursor.NW_RESIZE_CURSOR || resizeDir == Cursor.NE_RESIZE_CURSOR) { r.height -= dy; r.y += dy; }
+                    
                     Dimension mn = getMinimumSize();
-                    if (r.width >= mn.width && r.height >= mn.height) setBounds(r);
+                    
+                    if (r.width < mn.width) {
+                        if (resizeDir == Cursor.W_RESIZE_CURSOR || resizeDir == Cursor.NW_RESIZE_CURSOR || resizeDir == Cursor.SW_RESIZE_CURSOR) {
+                            r.x += (r.width - mn.width); 
+                        }
+                        r.width = mn.width;
+                    }
+                    
+                    if (r.height < mn.height) {
+                        if (resizeDir == Cursor.N_RESIZE_CURSOR || resizeDir == Cursor.NW_RESIZE_CURSOR || resizeDir == Cursor.NE_RESIZE_CURSOR) {
+                            r.y += (r.height - mn.height); 
+                        }
+                        r.height = mn.height;
+                    }
+                    
+                    setBounds(r);
                 }
             }
             @Override public void mouseReleased(MouseEvent e) {
@@ -600,8 +628,8 @@ public class Timex extends JFrame {
                 setCursor(Cursor.getDefaultCursor());
             }
         };
-        addMouseListener(ma);
-        addMouseMotionListener(ma);
+        root.addMouseListener(ma);
+        root.addMouseMotionListener(ma);
     }
 
     private int edgeDir(int x, int y) {
