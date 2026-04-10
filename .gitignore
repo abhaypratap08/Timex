@@ -1,0 +1,3 @@
+build/
+ANALOG_TIMEX/src/*.class
+DIGITAL_TIMEX/src/*.class

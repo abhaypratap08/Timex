@@ -8,9 +8,14 @@ import javax.swing.*;
 import javax.swing.plaf.basic.BasicButtonUI;
 
 public class Analog extends JFrame {
+    private static final Color C_BG_TOP    = new Color(17, 23, 38);
+    private static final Color C_BG_BOT    = new Color(31, 44, 68);
+    private static final Color C_GLOW      = new Color(89, 135, 255, 76);
+    private static final Color C_FACE_BG   = new Color(20, 29, 47);
+    private static final Color C_FACE_RING = new Color(214, 225, 245, 90);
     private static final Color C_TIMER     = Color.WHITE;
-    private static final Color C_SUB       = new Color(185, 195, 210);
-    private static final Color C_DIM       = new Color(130, 145, 165);
+    private static final Color C_SUB       = new Color(199, 212, 232);
+    private static final Color C_DIM       = new Color(136, 154, 184);
     private static final Color C_SEC_HAND  = new Color(235, 87, 87); 
 
     private static final Color C_ICO_BG    = new Color(255, 255, 255,  30);
@@ -24,6 +29,7 @@ public class Analog extends JFrame {
     private AnalogFace analogFace;
     private JLabel clockDay, clockDate;
     private TimexBtn closeBtn;
+    private Timer clockTimer;
 
     private static final int RZ = 7;
     private Point     pressPoint;
@@ -32,7 +38,13 @@ public class Analog extends JFrame {
 
     public Analog() {
         setUndecorated(true);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                shutdown();
+            }
+        });
         
         // --- Cross-Platform Floating & Tool Hints ---
         setType(Window.Type.UTILITY);
@@ -50,9 +62,9 @@ public class Analog extends JFrame {
         setLocationRelativeTo(null);
         setVisible(true);
 
-        Timer timer = new Timer(1000, e -> refreshClock());
-        timer.setInitialDelay(0);
-        timer.start();
+        clockTimer = new Timer(1000, e -> refreshClock());
+        clockTimer.setInitialDelay(0);
+        clockTimer.start();
     }
 
     private void buildUI() {
@@ -61,8 +73,7 @@ public class Analog extends JFrame {
                 Graphics2D g2 = aa(g);
                 int W = getWidth(), H = getHeight();
                 g2.setClip(new RoundRectangle2D.Double(0, 0, W, H, 18, 18));
-                g2.setColor(new Color(44, 50, 60));
-                g2.fillRect(0, 0, W, H);
+                paintShell(g2, W, H);
                 g2.dispose();
             }
         };
@@ -70,7 +81,7 @@ public class Analog extends JFrame {
 
         closeBtn = new TimexBtn("✕", C_ICO_BG, C_ICO_BD, C_ICO_FG, true);
         closeBtn.setFont(new Font("Dialog", Font.PLAIN, 13));
-        closeBtn.addActionListener(e -> System.exit(0));
+        closeBtn.addActionListener(e -> dispose());
         root.add(closeBtn);
 
         analogFace = new AnalogFace();
@@ -101,25 +112,40 @@ public class Analog extends JFrame {
         closeBtn.setBounds(W - cbSz - 12, 12, cbSz, cbSz);
 
         // Calculate space for labels
-        int dayFsz = Math.max(16, (int)(H * 0.06));
-        int dateFsz = Math.max(12, (int)(H * 0.045));
-        int textH = dayFsz + dateFsz + 20;
+        int dayFsz = Math.max(16, (int)(H * 0.058));
+        int dateFsz = Math.max(12, (int)(H * 0.042));
+        int textH = dayFsz + dateFsz + 24;
 
         // Make the analog clock perfectly square and centered
         int faceSz = Math.min(W - 40, H - textH - 30);
         int faceX = (W - faceSz) / 2;
-        int faceY = 20;
+        int faceY = 24;
         analogFace.setBounds(faceX, faceY, faceSz, faceSz);
 
-        // Labels at the bottom
-        int textStartY = faceY + faceSz + 10;
+        int textStartY = faceY + faceSz + 14;
         clockDay.setFont(new Font("Helvetica Neue", Font.BOLD, dayFsz));
         clockDay.setBounds(0, textStartY, W, dayFsz + 4);
 
         clockDate.setFont(new Font("Helvetica Neue", Font.PLAIN, dateFsz));
-        clockDate.setBounds(0, textStartY + dayFsz + 4, W, dateFsz + 4);
+        clockDate.setBounds(0, textStartY + dayFsz + 6, W, dateFsz + 4);
 
         root.repaint();
+    }
+
+    private void paintShell(Graphics2D g2, int width, int height) {
+        g2.setPaint(new GradientPaint(0, 0, C_BG_TOP, 0, height, C_BG_BOT));
+        g2.fillRect(0, 0, width, height);
+
+        g2.setColor(C_GLOW);
+        g2.fill(new Ellipse2D.Double(-width * 0.22, -height * 0.20, width * 0.92, height * 0.72));
+        g2.fill(new Ellipse2D.Double(width * 0.48, height * 0.28, width * 0.55, height * 0.44));
+
+        Shape card = new RoundRectangle2D.Double(10, 10, width - 20, height - 20, 24, 24);
+        g2.setColor(new Color(255, 255, 255, 14));
+        g2.fill(card);
+        g2.setColor(new Color(255, 255, 255, 42));
+        g2.setStroke(new BasicStroke(1.1f));
+        g2.draw(card);
     }
 
     private void refreshClock() {
@@ -127,6 +153,13 @@ public class Analog extends JFrame {
         clockDay.setText(now.format(FMT_DAY));
         clockDate.setText(now.format(FMT_DATE));
         analogFace.repaint();
+    }
+
+    private void shutdown() {
+        if (clockTimer != null) {
+            clockTimer.stop();
+        }
+        System.exit(0);
     }
 
     class AnalogFace extends JPanel {
@@ -145,12 +178,32 @@ public class Analog extends JFrame {
             int centerY = H / 2;
             int radius = (Math.min(W, H) / 2) - 5; // Slight padding
 
-            // Draw outer dial
-            g2.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.setColor(C_DIM);
-            g2.draw(new Ellipse2D.Double(centerX - radius, centerY - radius, 2 * radius, 2 * radius));
+            g2.setColor(new Color(0, 0, 0, 34));
+            g2.fill(new Ellipse2D.Double(centerX - radius + 3, centerY - radius + 5, 2 * radius, 2 * radius));
 
-            // TIMEX Label
+            g2.setColor(C_FACE_BG);
+            g2.fill(new Ellipse2D.Double(centerX - radius, centerY - radius, 2 * radius, 2 * radius));
+
+            g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.setColor(C_FACE_RING);
+            g2.draw(new Ellipse2D.Double(centerX - radius, centerY - radius, 2 * radius, 2 * radius));
+            g2.setStroke(new BasicStroke(1.4f));
+            g2.setColor(new Color(255, 255, 255, 38));
+            g2.draw(new Ellipse2D.Double(centerX - radius + 7, centerY - radius + 7, 2 * radius - 14, 2 * radius - 14));
+
+            for (int i = 0; i < 60; i++) {
+                double radians = Math.toRadians(i * 6 - 90);
+                int outer = radius - 9;
+                int inner = outer - (i % 5 == 0 ? Math.max(12, radius / 8) : Math.max(6, radius / 15));
+                int x1 = (int) (centerX + Math.cos(radians) * outer);
+                int y1 = (int) (centerY + Math.sin(radians) * outer);
+                int x2 = (int) (centerX + Math.cos(radians) * inner);
+                int y2 = (int) (centerY + Math.sin(radians) * inner);
+                g2.setColor(i % 5 == 0 ? new Color(255, 255, 255, 120) : new Color(255, 255, 255, 44));
+                g2.setStroke(new BasicStroke(i % 5 == 0 ? 2.2f : 1.1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(x1, y1, x2, y2);
+            }
+
             int fontSz = Math.max(10, radius / 5);
             g2.setFont(new Font("Helvetica Neue", Font.BOLD, fontSz));
             g2.setColor(C_SUB);
@@ -163,7 +216,6 @@ public class Analog extends JFrame {
             double minutes = now.getMinute() + seconds / 60.0;
             double hours = (now.getHour() % 12) + minutes / 60.0;
 
-            // Draw Hands (dynamically scaled)
             int hrThick = Math.max(3, radius / 15);
             int minThick = Math.max(2, radius / 25);
             
@@ -171,7 +223,6 @@ public class Analog extends JFrame {
             drawHand(g2, centerX, centerY, minutes * 6, radius * 0.8, C_SUB, minThick);    // Minute
             drawHand(g2, centerX, centerY, seconds * 6, radius * 0.85, C_SEC_HAND, 2);     // Second
 
-            // Center pivot dot
             g2.setColor(C_TIMER);
             int dotSz = Math.max(6, radius / 12);
             g2.fillOval(centerX - (dotSz/2), centerY - (dotSz/2), dotSz, dotSz);
@@ -213,6 +264,10 @@ public class Analog extends JFrame {
             Shape s = circle
                     ? new Ellipse2D.Double(1, 1, W - 2, H - 2)
                     : new RoundRectangle2D.Double(1, 1, W - 2, H - 2, H - 2, H - 2);
+            g2.setColor(new Color(0, 0, 0, 26));
+            g2.fill(circle
+                    ? new Ellipse2D.Double(1, 3, W - 2, H - 2)
+                    : new RoundRectangle2D.Double(1, 3, W - 2, H - 2, H - 2, H - 2));
             g2.setColor(fill); g2.fill(s);
             if (!bg.equals(bd)) { g2.setColor(bd); g2.setStroke(new BasicStroke(1.2f)); g2.draw(s); }
             drawCenteredText(g2, getText(), getFont(), fg, W, H);
@@ -270,7 +325,19 @@ public class Analog extends JFrame {
                     if (resizeDir == Cursor.W_RESIZE_CURSOR  || resizeDir == Cursor.NW_RESIZE_CURSOR || resizeDir == Cursor.SW_RESIZE_CURSOR) { r.width -= dx; r.x += dx; }
                     if (resizeDir == Cursor.N_RESIZE_CURSOR  || resizeDir == Cursor.NW_RESIZE_CURSOR || resizeDir == Cursor.NE_RESIZE_CURSOR) { r.height -= dy; r.y += dy; }
                     Dimension mn = getMinimumSize();
-                    if (r.width >= mn.width && r.height >= mn.height) setBounds(r);
+                    if (r.width < mn.width) {
+                        if (resizeDir == Cursor.W_RESIZE_CURSOR || resizeDir == Cursor.NW_RESIZE_CURSOR || resizeDir == Cursor.SW_RESIZE_CURSOR) {
+                            r.x += (r.width - mn.width);
+                        }
+                        r.width = mn.width;
+                    }
+                    if (r.height < mn.height) {
+                        if (resizeDir == Cursor.N_RESIZE_CURSOR || resizeDir == Cursor.NW_RESIZE_CURSOR || resizeDir == Cursor.NE_RESIZE_CURSOR) {
+                            r.y += (r.height - mn.height);
+                        }
+                        r.height = mn.height;
+                    }
+                    setBounds(r);
                 }
             }
             @Override public void mouseReleased(MouseEvent e) {
@@ -278,8 +345,17 @@ public class Analog extends JFrame {
                 setCursor(Cursor.getDefaultCursor());
             }
         };
-        addMouseListener(ma);
-        addMouseMotionListener(ma);
+        attachWindowControls(root, ma);
+    }
+
+    private void attachWindowControls(Component component, MouseAdapter adapter) {
+        component.addMouseListener(adapter);
+        component.addMouseMotionListener(adapter);
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                attachWindowControls(child, adapter);
+            }
+        }
     }
 
     private int edgeDir(int x, int y) {

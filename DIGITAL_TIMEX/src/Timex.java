@@ -6,12 +6,16 @@ import java.time.format.DateTimeFormatter;
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicButtonUI;
 
-// 1. CHANGED: Now extends JDialog instead of JFrame
 public class Timex extends JDialog { 
 
+    private static final Color C_BG_TOP    = new Color(18, 24, 39);
+    private static final Color C_BG_BOT    = new Color(33, 44, 72);
+    private static final Color C_GLOW      = new Color(83, 130, 255, 80);
+    private static final Color C_CARD_BG   = new Color(255, 255, 255, 18);
+    private static final Color C_CARD_BD   = new Color(255, 255, 255, 48);
     private static final Color C_TIMER     = Color.WHITE;
-    private static final Color C_SUB       = new Color(185, 195, 210);
-    private static final Color C_DIM       = new Color(130, 145, 165);
+    private static final Color C_SUB       = new Color(201, 214, 233);
+    private static final Color C_DIM       = new Color(141, 158, 186);
 
     private static final Color C_TAB_A_BG  = new Color(255, 255, 255, 230);
     private static final Color C_TAB_A_FG  = new Color(14,  24,  46);
@@ -72,19 +76,15 @@ public class Timex extends JDialog {
 
     public Timex() {
         setUndecorated(true);
-        // 2. CHANGED: JDialog uses DISPOSE_ON_CLOSE instead of EXIT_ON_CLOSE
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE); 
-        
-        // Ensure JVM completely stops when this dialog is disposed
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
-                System.exit(0);
+                shutdown();
             }
         });
         
         setType(Window.Type.UTILITY);
-        // Keep resizable true so your custom resize logic is permitted by the OS
         setResizable(true); 
         setAlwaysOnTop(true);
 
@@ -109,8 +109,7 @@ public class Timex extends JDialog {
                 Graphics2D g2 = aa(g);
                 int W = getWidth(), H = getHeight();
                 g2.setClip(new RoundRectangle2D.Double(0, 0, W, H, 18, 18));
-                g2.setColor(new Color(44, 50, 60));
-                g2.fillRect(0, 0, W, H);
+                paintShell(g2, W, H);
                 g2.dispose();
             }
         };
@@ -131,7 +130,7 @@ public class Timex extends JDialog {
 
         closeBtn = new TimexBtn("✕", C_ICO_BG, C_ICO_BD, C_ICO_FG, true);
         closeBtn.setFont(new Font("Dialog", Font.PLAIN, 13));
-        closeBtn.addActionListener(e -> System.exit(0));
+        closeBtn.addActionListener(e -> dispose());
         root.add(closeBtn);
 
         // clock panel
@@ -233,7 +232,9 @@ public class Timex extends JDialog {
                 if (!running) SwingUtilities.invokeLater(tf::selectAll);
             }
             @Override public void focusLost(FocusEvent e) {
-                syncSecsFromFields();
+                if (!running) {
+                    syncSecsFromFields();
+                }
             }
         });
         
@@ -262,15 +263,15 @@ public class Timex extends JDialog {
 
     private void syncSecsFromFields() {
         try {
-            int h = Integer.parseInt(hhField.getText().trim().isEmpty() ? "0" : hhField.getText().trim());
-            int m = Integer.parseInt(mmField.getText().trim().isEmpty() ? "0" : mmField.getText().trim());
-            int s = Integer.parseInt(ssField.getText().trim().isEmpty() ? "0" : ssField.getText().trim());
+            int h = Math.max(0, Integer.parseInt(hhField.getText().trim().isEmpty() ? "0" : hhField.getText().trim()));
+            int m = Math.max(0, Integer.parseInt(mmField.getText().trim().isEmpty() ? "0" : mmField.getText().trim()));
+            int s = Math.max(0, Integer.parseInt(ssField.getText().trim().isEmpty() ? "0" : ssField.getText().trim()));
             secsLeft = h * 3600L + m * 60L + s;
             modeSecs[activeMode] = (int) secsLeft;
         } catch (Exception ex) {
-            // Revert silently on parse error
+            secsLeft = modeSecs[activeMode];
         }
-        updateTimeFields(); // Reformats the display perfectly (e.g. "90" mins -> 1hr 30m)
+        updateTimeFields();
     }
 
     private void setFieldsEditable(boolean editable) {
@@ -311,20 +312,37 @@ public class Timex extends JDialog {
         root.repaint();
     }
 
+    private void paintShell(Graphics2D g2, int width, int height) {
+        g2.setPaint(new GradientPaint(0, 0, C_BG_TOP, 0, height, C_BG_BOT));
+        g2.fillRect(0, 0, width, height);
+
+        g2.setColor(C_GLOW);
+        g2.fill(new Ellipse2D.Double(-width * 0.18, -height * 0.35, width * 0.78, height * 0.88));
+        g2.fill(new Ellipse2D.Double(width * 0.50, height * 0.18, width * 0.60, height * 0.72));
+
+        int inset = 10;
+        Shape card = new RoundRectangle2D.Double(inset, 10, width - 20, height - 20, 24, 24);
+        g2.setColor(C_CARD_BG);
+        g2.fill(card);
+        g2.setColor(C_CARD_BD);
+        g2.setStroke(new BasicStroke(1.15f));
+        g2.draw(card);
+    }
+
     private void layoutClockPanel(int W, int H) {
         int timeFsz = Math.max(26, (int)(H * 0.32));
         clockTime.setFont(new Font("Helvetica Neue", Font.BOLD, timeFsz));
         int tlH = timeFsz + 8;
-        int tlY = (H - tlH) / 2 - (int)(H * 0.08);
+        int tlY = (H - tlH) / 2 - (int)(H * 0.10);
         clockTime.setBounds(0, tlY, W, tlH);
 
-        int dayFsz = Math.max(12, (int)(H * 0.11));
+        int dayFsz = Math.max(12, (int)(H * 0.10));
         clockDay.setFont(new Font("Helvetica Neue", Font.PLAIN, dayFsz));
-        clockDay.setBounds(0, tlY + tlH + 4, W, dayFsz + 6);
+        clockDay.setBounds(0, tlY + tlH + 8, W, dayFsz + 6);
 
-        int dateFsz = Math.max(10, (int)(H * 0.08));
+        int dateFsz = Math.max(10, (int)(H * 0.075));
         clockDate.setFont(new Font("Helvetica Neue", Font.PLAIN, dateFsz));
-        clockDate.setBounds(0, tlY + tlH + dayFsz + 14, W, dateFsz + 6);
+        clockDate.setBounds(0, tlY + tlH + dayFsz + 18, W, dateFsz + 6);
     }
 
     private void layoutPomoPanel(int W, int H) {
@@ -376,7 +394,7 @@ public class Timex extends JDialog {
         int ctrlGap = Math.max(10, (int)(W * 0.02));
         int ctrlX   = (W - (startW + icoSz + ctrlGap)) / 2;
         int ctrlY   = adjY + adjH + (int)(H * 0.04);
-        startBtn.setScaledFont(new Font("Helvetica Neue", Font.BOLD, Math.max(10, ctrlH / 3 + 1)));
+        startBtn.setScaledFont(new Font("Helvetica Neue", Font.BOLD, Math.max(10, ctrlH / 3 + 2)));
         startBtn.setBounds(ctrlX, ctrlY, startW, ctrlH);
         for (Component c : pomoPanel.getComponents()) {
             if ("reset".equals(c.getName())) {
@@ -425,8 +443,16 @@ public class Timex extends JDialog {
             startBtn.setText("start");
             setFieldsEditable(true);
         } else {
+            syncSecsFromFields();
+            if (secsLeft <= 0) {
+                Toolkit.getDefaultToolkit().beep();
+                return;
+            }
+            if (countdown != null) {
+                countdown.stop();
+            }
             setFieldsEditable(false);
-            root.requestFocusInWindow(); // drop any active typing focus
+            root.requestFocusInWindow();
             countdown = new Timer(1000, e -> {
                 if (secsLeft > 0) {
                     secsLeft--;
@@ -457,6 +483,16 @@ public class Timex extends JDialog {
         startBtn.setText("start");
     }
 
+    private void shutdown() {
+        if (clockTimer != null) {
+            clockTimer.stop();
+        }
+        if (countdown != null) {
+            countdown.stop();
+        }
+        System.exit(0);
+    }
+
     class TimexBtn extends JButton {
         private final Color bg, bd, fg;
         private final boolean circle;
@@ -480,6 +516,10 @@ public class Timex extends JDialog {
             Shape s = circle
                     ? new Ellipse2D.Double(1, 1, W - 2, H - 2)
                     : new RoundRectangle2D.Double(1, 1, W - 2, H - 2, H - 2, H - 2);
+            g2.setColor(new Color(0, 0, 0, 26));
+            g2.fill(circle
+                    ? new Ellipse2D.Double(1, 3, W - 2, H - 2)
+                    : new RoundRectangle2D.Double(1, 3, W - 2, H - 2, H - 2, H - 2));
             g2.setColor(fill); g2.fill(s);
             if (!bg.equals(bd)) { g2.setColor(bd); g2.setStroke(new BasicStroke(1.2f)); g2.draw(s); }
             drawCenteredText(g2, getText(), getFont(), fg, W, H);
@@ -515,6 +555,9 @@ public class Timex extends JDialog {
                 g2.fill(s);
                 g2.setColor(C_TAB_I_BD); g2.setStroke(new BasicStroke(1.1f)); g2.draw(s);
             }
+            g2.setColor(new Color(255, 255, 255, active ? 70 : 18));
+            g2.setStroke(new BasicStroke(1f));
+            g2.draw(new RoundRectangle2D.Double(3, 3, W - 6, Math.max(8, H / 2.5), H - 6, H - 6));
             drawCenteredText(g2, getText(), scaledFont, active ? C_TAB_A_FG : C_TAB_I_FG, W, H);
             g2.dispose();
         }
@@ -548,6 +591,8 @@ public class Timex extends JDialog {
                 g2.fill(s);
                 g2.setColor(C_PILL_I_BD); g2.setStroke(new BasicStroke(1.0f)); g2.draw(s);
             }
+            g2.setColor(new Color(255, 255, 255, active ? 65 : 14));
+            g2.draw(new RoundRectangle2D.Double(3, 3, W - 6, Math.max(8, H / 2.6), H - 6, H - 6));
             drawCenteredText(g2, getText(), scaledFont, active ? C_PILL_A_FG : C_PILL_I_FG, W, H);
             g2.dispose();
         }
@@ -628,8 +673,17 @@ public class Timex extends JDialog {
                 setCursor(Cursor.getDefaultCursor());
             }
         };
-        root.addMouseListener(ma);
-        root.addMouseMotionListener(ma);
+        attachWindowControls(root, ma);
+    }
+
+    private void attachWindowControls(Component component, MouseAdapter adapter) {
+        component.addMouseListener(adapter);
+        component.addMouseMotionListener(adapter);
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                attachWindowControls(child, adapter);
+            }
+        }
     }
 
     private int edgeDir(int x, int y) {
